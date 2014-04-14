@@ -34,6 +34,8 @@ class InterpreterError(Exception):
 
 class PyFucker(object):
     """ A Brainfuck interpreter instance. """
+    #pylint: disable=locally-disabled, too-many-instance-attributes
+
     COMMENT_RE = re.compile("/\\* .*? \\*/", re.X | re.M | re.S)
 
     def __init__(self, code, reader=sys.stdin.readline,
@@ -44,6 +46,9 @@ class PyFucker(object):
 
         self.stack = [0]
         self.stack_pos = 0
+
+        self.loop_returns = []
+
         self.fn_read = reader
         self.fn_write = writer
         self.input_buffer = []
@@ -119,12 +124,83 @@ class PyFucker(object):
         """
         sys.stderr.write("Stack Position: %d\n" % self.stack_pos)
         sys.stderr.write("Stack: %s\n" % repr(self.stack))
+        sys.stderr.write("Loop Returns: %s\n" % repr(self.loop_returns))
+
+    def find_loop_ending(self, start):
+        """ Find the end of this begin loop marker.
+
+        Used by do_loop_begin.
+
+        A possible future improvement is to cache where the loops start
+        and end, respectively. Although, this may prove useless if we
+        go with a tokenizing approach.
+        """
+        if self.code[start] != '[':
+            raise InterpreterError("find_loop_ending(%d) is %s not [" % (
+                start, self.code[start]))
+
+        # Here comes the grody part. We need to correctly match our
+        # start and end positions -- if someone asks about the ending
+        # of start0, we must return end0, not end1.
+        #   [  xxx  [  xxx  ]  xxx  ]
+        #   ^       ^       ^       ^
+        # start0  start1  end1    end0
+        pos = start
+        depth = 1
+
+        while True:
+            pos += 1
+            if self.code[pos] == '[':
+                depth += 1
+                continue
+            if self.code[pos] != ']':
+                continue
+
+            depth -= 1
+            if depth == 0:
+                return pos
+
+    def do_loop_begin(self):
+        """ Begin loop marker.
+
+        If the value on the stack is 0, then we skip to the end of the
+        loop we were about to begin.
+
+        Otherwise, we push our position on to the loop positions so we
+        remember where to return to later.
+        """
+        # Check if we need to enter this loop at all.
+        if self.stack[self.stack_pos] == 0:
+            self.code_pos = self.find_loop_ending(self.code_pos) + 1
+            return
+
+        # Okay, we need to enter it. Save where this loop began.
+        self.loop_returns.append(self.code_pos)
+        self.code_pos += 1
+
+    def do_loop_end(self):
+        """ End loop marker.
+
+        Remove the last-loop-start pointer from the loop stack.
+
+        If the value on the stack is 0, then we discard the return
+        position and skip to the next instruction. (No need to return
+        if it's just going to jump forwards anyways!)
+
+        Otherwise, we change our EIP to the last-loop-start + 1. (We
+        already tested the value, so no need to do the begin again.)
+        """
+        return_pos = self.loop_returns[-1]
+
+        if self.stack[self.stack_pos] == 0:
+            self.loop_returns.pop()
+            self.code_pos += 1
+            return
+
+        self.code_pos = return_pos + 1
 
     def run(self):
-        """ Run the program?
-
-        This doesn't yet handle loops.
-        """
+        """ Run the program. """
         dispatch = {
             '+': self.do_incr,
             '-': self.do_decr,
@@ -133,17 +209,19 @@ class PyFucker(object):
             '<': self.do_stack_left,
             '>': self.do_stack_right,
             '#': self.do_show_debug,
+            '[': self.do_loop_begin,
+            ']': self.do_loop_end,
         }
 
         self.code_pos = 0
         while self.code_pos < len(self.code):
             opcode = self.code[self.code_pos]
-            if opcode in dispatch:
-                dispatch[opcode]()
+            if opcode not in dispatch:
+                continue
+
+            dispatch[opcode]()
+
+            # We don't manipulate the code_pos for the two loop markers,
+            # as they alter this themselves.
+            if opcode not in "[]":
                 self.code_pos += 1
-
-            elif opcode == '[':
-                raise NotImplementedError("LOOP BEGIN")
-
-            elif opcode == ']':
-                raise NotImplementedError("LOOP END")
