@@ -26,8 +26,14 @@ class TestBasicOps(unittest.TestCase):
         inst.do_incr()
         assert inst.stack == [255]
         assert inst.stack_pos == 0
+
+        inst.strict = True
         with self.assertRaises(InterpreterError):
             inst.do_incr()
+        assert inst.stack == [255]
+        assert inst.stack_pos == 0
+
+        inst.strict = False
         assert inst.stack == [255]
         assert inst.stack_pos == 0
 
@@ -38,8 +44,14 @@ class TestBasicOps(unittest.TestCase):
         inst.do_decr()
         assert inst.stack == [0]
         assert inst.stack_pos == 0
+
+        inst.strict = True
         with self.assertRaises(InterpreterError):
             inst.do_decr()
+        assert inst.stack == [0]
+        assert inst.stack_pos == 0
+
+        inst.strict = False
         assert inst.stack == [0]
         assert inst.stack_pos == 0
 

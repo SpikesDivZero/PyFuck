@@ -39,7 +39,7 @@ class PyFucker(object):
     COMMENT_RE = re.compile("/\\* .*? \\*/", re.X | re.M | re.S)
 
     def __init__(self, code, reader=sys.stdin.readline,
-                 writer=sys.stdout.write):
+                 writer=sys.stdout.write, strict=False):
         # Code starts as a string, but compile() turns it into a list.
         self.code = code
         self.code_pos = 0
@@ -52,6 +52,9 @@ class PyFucker(object):
         self.fn_read = reader
         self.fn_write = writer
         self.input_buffer = []
+
+        # Should we be strict about over/under flows?
+        self.strict = strict
 
         self.compile()
 
@@ -73,12 +76,16 @@ class PyFucker(object):
     def do_incr(self):
         """ Implements the + operator. """
         if self.stack[self.stack_pos] >= 255:
+            if not self.strict:
+                return
             raise InterpreterError("Char overflow at %d" % self.stack_pos)
         self.stack[self.stack_pos] += 1
 
     def do_decr(self):
         """ Implements the - operator. """
         if self.stack[self.stack_pos] <= 0:
+            if not self.strict:
+                return
             raise InterpreterError("Char underflow at %d" % self.stack_pos)
         self.stack[self.stack_pos] -= 1
 
