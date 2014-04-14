@@ -217,6 +217,7 @@ class PyFucker(object):
         while self.code_pos < len(self.code):
             opcode = self.code[self.code_pos]
             if opcode not in dispatch:
+                self.code_pos += 1
                 continue
 
             dispatch[opcode]()

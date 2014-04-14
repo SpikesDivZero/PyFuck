@@ -152,6 +152,13 @@ class TestSimpleRun(unittest.TestCase):
     things are on track.
     """
 
+    def test_ignore_unknown(self):
+        """ Ignore unknown characters in running. """
+        inst = PyFucker("+x+y+z+")
+        inst.run()
+        assert inst.stack == [4]
+        assert inst.stack_pos == 0
+
     def test_hello(self):
         """ A simple hello printer! """
 
