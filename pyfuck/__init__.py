@@ -18,6 +18,8 @@ from __future__ import print_function
 import re
 import sys
 
+from pyfuck.hexdump import HexDumper
+
 # Py3 compat: raw_input was renamed to just input, but input is NOT
 # safe in Py2 -- input was effectively eval(raw_input()).
 try:
@@ -129,9 +131,13 @@ class PyFucker(object):
 
         This will do something awesome, but for now, let's get something.
         """
-        sys.stderr.write("Stack Position: %d\n" % self.stack_pos)
-        sys.stderr.write("Stack: %s\n" % repr(self.stack))
-        sys.stderr.write("Loop Returns: %s\n" % repr(self.loop_returns))
+        dumper = HexDumper()
+        ewrite = sys.stderr.write
+        ewrite("Code Position: %04x\n" % self.code_pos)
+        ewrite("Stack Position: %04x\n" % self.stack_pos)
+        ewrite("Stack:\n")
+        stack_bin = "".join([chr(x) for x in self.stack])
+        ewrite(dumper.dump_string(stack_bin))
 
     def find_loop_ending(self, start):
         """ Find the end of this begin loop marker.
