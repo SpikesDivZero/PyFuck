@@ -135,7 +135,6 @@ class PyFucker(object):
         ewrite = sys.stderr.write
         ewrite("Code Position: %04x\n" % self.code_pos)
         ewrite("Stack Position: %04x\n" % self.stack_pos)
-        ewrite("Stack:\n")
         stack_bin = "".join([chr(x) for x in self.stack])
         ewrite(dumper.dump_string(stack_bin))
 
@@ -212,6 +211,16 @@ class PyFucker(object):
 
         self.code_pos = return_pos + 1
 
+    def do_debug_halt(self):
+        """ HALT PROGRAM marker
+
+        I'm adding this so I can debug things easier. I should put this
+        behind some feature gating system.
+        """
+        self.do_show_debug()
+        self.code_pos = len(self.code)
+        print("\n\nHALTING\n")
+
     def run(self):
         """ Run the program. """
         dispatch = {
@@ -224,6 +233,7 @@ class PyFucker(object):
             '#': self.do_show_debug,
             '[': self.do_loop_begin,
             ']': self.do_loop_end,
+            '!': self.do_debug_halt,
         }
 
         self.code_pos = 0
